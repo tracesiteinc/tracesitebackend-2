@@ -1,4 +1,5 @@
 require('dotenv').config();
+
 const express   = require('express');
 const cors      = require('cors');
 const helmet    = require('helmet');
@@ -12,9 +13,9 @@ const reportRoutes = require('./routes/report');
 const app  = express();
 const PORT = process.env.PORT || 5000;
 
-// ─────────────────────────────────────────────
+// 
 //  SECURITY MIDDLEWARE
-// ─────────────────────────────────────────────
+// 
 app.use(helmet());
 app.set('trust proxy', 1);
 
@@ -64,9 +65,9 @@ if (process.env.NODE_ENV !== 'test') {
   app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 }
 
-// ─────────────────────────────────────────────
+// 
 //  HEALTH CHECK
-// ─────────────────────────────────────────────
+// 
 app.get('/health', (req, res) => {
   res.json({
     success: true,
@@ -77,16 +78,16 @@ app.get('/health', (req, res) => {
   });
 });
 
-// ─────────────────────────────────────────────
+// 
 //  API ROUTES
-// ─────────────────────────────────────────────
+// 
 app.use('/api/auth',   authLimiter, authRoutes);
 app.use('/api/scan',   scanLimiter, scanRoutes);
 app.use('/api/report', reportRoutes);
 
-// ─────────────────────────────────────────────
+// 
 //  ROOT
-// ─────────────────────────────────────────────
+// 
 app.get('/', (req, res) => {
   res.json({
     success: true,
@@ -115,16 +116,16 @@ app.get('/', (req, res) => {
   });
 });
 
-// ─────────────────────────────────────────────
+// 
 //  404 HANDLER
-// ─────────────────────────────────────────────
+// 
 app.use((req, res) => {
   res.status(404).json({ success: false, message: `Route ${req.method} ${req.path} not found.` });
 });
 
-// ─────────────────────────────────────────────
+// 
 //  GLOBAL ERROR HANDLER
-// ─────────────────────────────────────────────
+// 
 app.use((err, req, res, next) => {
   console.error('[ERROR]', err.message);
   res.status(err.status || 500).json({
@@ -135,9 +136,9 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ─────────────────────────────────────────────
+// 
 //  START SERVER
-// ─────────────────────────────────────────────
+// 
 app.listen(PORT, () => {
   console.log(`
   ┌─────────────────────────────────────────┐
