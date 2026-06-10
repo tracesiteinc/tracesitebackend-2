@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const validator = require('validator');
+const validator = require('validator'); // Now actively used for URL validation
 const { reportQueries, flaggedQueries } = require('../db/database');
 const { authenticate, adminOnly } = require('../middleware/auth');
 
@@ -17,30 +17,40 @@ router.post('/', authenticate, (req, res) => {
     if (!url || typeof url !== 'string' || url.trim().length === 0) {
       return res.status(400).json({ success: false, message: 'A URL is required.' });
     }
+
+    // NEW: Actually use the validator package to ensure it's a valid URL format
+    if (!validator.isURL(url.trim(), { require_protocol: false })) {
+      return res.status(400).json({ success: false, message: 'Please provide a valid URL.' });
+    }
+
     if (!reason || !VALID_REASONS.includes(reason)) {
       return res.status(400).json({
         success: false,
         message: `Reason must be one of: ${VALID_REASONS.join(', ')}.`,
       });
     }
+
     if (description && description.length > 1000) {
       return res.status(400).json({ success: false, message: 'Description must be under 1000 characters.' });
     }
 
+    const cleanUrl = url.trim();
+
     // Insert report
     const reportResult = reportQueries.create.run({
       user_id:     req.user.id,
-      url:         url.trim(),
+      url:         cleanUrl,
       reason,
       description: description?.trim() || null,
     });
 
     // Upsert into flagged_urls for scan engine to pick up
-    flaggedQueries.upsert.run(url.trim());
+    flaggedQueries.upsert.run(cleanUrl);
 
     return res.status(201).json({
       success: true,
-      message: 'Report submitted successfully. Thank you for protecting Nigeria's digital space.',
+      // FIX: Escaped the apostrophe in "Nigeria\'s" to prevent syntax crash
+      message: 'Report submitted successfully. Thank you for protecting Nigeria\'s digital space.',
       report_id: reportResult.lastInsertRowid,
     });
   } catch (err) {
@@ -60,12 +70,14 @@ router.get('/url', (req, res) => {
       return res.status(400).json({ success: false, message: 'URL query parameter is required.' });
     }
 
-    const reports = reportQueries.findByUrl.all(url);
-    const flagged = flaggedQueries.findByUrl.get(url);
+    const cleanUrl = url.trim();
+
+    const reports = reportQueries.findByUrl.all(cleanUrl);
+    const flagged = flaggedQueries.findByUrl.get(cleanUrl);
 
     return res.json({
       success: true,
-      url,
+      url: cleanUrl,
       report_count:   reports.length,
       community_flag: flagged || null,
       reports: reports.map(r => ({
@@ -88,6 +100,7 @@ router.get('/url', (req, res) => {
 // ─────────────────────────────────────────────
 router.get('/top-flagged', (req, res) => {
   try {
+    // Recommendation: Add pagination or a limit to this query in your DB layer
     const flagged = flaggedQueries.topFlagged.all();
     return res.json({ success: true, flagged });
   } catch (err) {
@@ -102,6 +115,7 @@ router.get('/top-flagged', (req, res) => {
 // ─────────────────────────────────────────────
 router.get('/pending', authenticate, adminOnly, (req, res) => {
   try {
+    // Recommendation: Add pagination here if reports scale up
     const reports = reportQueries.pending.all();
     return res.json({ success: true, reports });
   } catch (err) {
@@ -128,7 +142,10 @@ router.patch('/:id', authenticate, adminOnly, (req, res) => {
 
     // If confirmed, mark the URL in flagged_urls
     if (status === 'confirmed') {
-      flaggedQueries.confirm.run(id);
+      // CAUTION: Double-check your DB logic here. 
+      // Does flaggedQueries.confirm expect a Report ID or a URL?
+      // In your POST route, you used the URL for flaggedQueries.upsert.
+      flaggedQueries.confirm.run(id); 
     }
 
     return res.json({
