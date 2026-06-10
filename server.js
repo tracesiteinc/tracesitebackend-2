@@ -25,10 +25,10 @@ const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3000')
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin || (process.env.CORS_ORIGINS || '').split(',').includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error(`CORS policy: origin ${origin} not allowed`));
+      callback(null,false);
     }
   },
   credentials: true,
